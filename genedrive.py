@@ -81,10 +81,11 @@ class Population():
                              str(len(self.members)+1)] = Individual(self.parameters, False)
 
 
-        self.current_generation += 1
+
 
 class Individual(): #TODO: figure out how mate selection and reproduction chances need to be calculated
     def __init__(self, parameters, has_gene, ancestors=[]):
+        self.parameters = parameters
         self.sex = choice(["M","F"])
         self.age = 0
         self.has_gene = has_gene

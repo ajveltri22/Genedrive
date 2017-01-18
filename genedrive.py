@@ -5,33 +5,71 @@ from random import random as random
 from random import sample as sample
 from string import ascii_uppercase as generation_ID
 
-#TODO: fix generations over 26 to use correct identifiers
 #TODO: make sure Population.check_parameters() is exhaustive
 #TODO: data output formatting
 
 class Parameters():
     def __init__(self):
-        self.generations = 25           #number of generations to run
-        self.pop_size = 10              #total population size
+        self.generations = 1000           #number of generations to run
+        self.initial_pop_size = 100            #total population size
+        self.population_cap = 7000         #Must be 'False' or a number greater than initial_pop_size
         self.num_introduced = 5          #number of organisms introduced
-        self.inherit_chance = .95          #chance of inheritance of gene drive from heterozygous individual
+        self.inherit_chance = .9          #chance of inheritance of gene drive from heterozygous individual
         self.inherit_from_mother = True
         self.inherit_from_father = True
         self.mate_chance_average = 1   #chance to mate in generation
         self.mate_chance_stdev = 0
-        self.male_reproduction_penalty = 0.3
-        self.female_reproduction_penalty = 0.3
+        self.male_reproduction_penalty = 0.1
+        self.female_reproduction_penalty = 0.1
         self.max_litter_size = 1             #number of offspring per mating event
         self.max_lifespan = 5  # number of generations an individual lives
         self.stochastic_death = True
         self.avg_age_of_death = 5
         self.stdev_age_of_death = 1
+        self.parameter_check()
+
+    def parameter_check(self):
+        if self.initial_pop_size <= 0 or type(self.initial_pop_size) is not int:
+            raise Exception("initial_pop_size must be a positive integer.")
+        if self.population_cap == False:
+            pass
+        elif self.population_cap == True:
+            raise Exception("population_cap must equal 'False' or an integer greater than or equal to initial_pop_size.")
+        elif type(self.population_cap) != int:
+            raise Exception("population_cap must equal 'False' or an integer greater than or equal to initial_pop_size.")
+        elif self.population_cap < self.initial_pop_size:
+            raise Exception("population_cap must equal 'False' or an integer greater than or equal to initial_pop_size.")
+        if self.num_introduced < 0 or self.num_introduced > self.initial_pop_size or type(self.num_introduced) is not int:
+            raise Exception("num_introduced must be a nonnegative integer or zero and must be less than or equal to initial_pop_size.")
+        if type(self.inherit_from_father) != bool or type(self.inherit_from_mother) != bool:
+            raise Exception("inherit_from_father and inherit_from_mother must be booleans.")
+        if self.num_introduced > 0 and not (self.inherit_from_mother or self.inherit_from_father):
+            raise Exception("Inheritance must be turned on for at least one parent if num_introduced is nonzero.")
+        if self.inherit_chance < 0 or self.inherit_chance > 1:
+            raise Exception("inherit_chance must be between 0 and 1 inclusive.")
+        if self.mate_chance_average < 0:
+            raise Exception("mate_chance_average must be zero or greater.")
+        if self.mate_chance_stdev < 0:
+            raise Exception("mate_chance_stdev must be zero or greater.")
+        if self.male_reproduction_penalty < 0 or self.female_reproduction_penalty < 0:
+            raise Exception("Both reproduction penalties must be zero or greater.")
+        if self.max_lifespan <= 1 or type(self.max_lifespan) is not int:
+            raise Exception("max_lifespan must be an integer greater than 1")
+        if self.max_litter_size <= 0 or type(self.max_litter_size) is not int:
+            raise Exception("max_litter_size must be a positive integer.")
+        if type(self.stochastic_death) != bool:
+            raise Exception("stochastic_death must be a boolean.")
+        if self.avg_age_of_death < 0:
+            raise Exception("mate_chance_average must be zero or greater.")
+        if self.stdev_age_of_death < 0:
+            raise Exception("mate_chance_stdev must be zero or greater.")
 
 
 class Population():
     def __init__(self, parameters):
         self.parameters = parameters
 
+        self.cumulative_number_of_individuals = self.parameters.initial_pop_size
         self.members = {}
         self.male_list = []
         self.female_list = []
@@ -43,42 +81,10 @@ class Population():
         self.male_number = 0
         self.female_number = 0
         self.current_generation = 0
-        self.parameter_check()
         self.create_generation_A()
 
-
-        #self.update_sex_numbers()
-
-    def parameter_check(self):
-        if self.parameters.pop_size <= 0 or type(self.parameters.pop_size) is not int:
-            raise Exception("pop_size must be a positive integer.")
-        if self.parameters.num_introduced < 0 or type(self.parameters.num_introduced) is not int:
-            raise Exception("num_introduced must be a nonnegative integer or zero.")
-        if type(self.parameters.inherit_from_father) != bool or type(self.parameters.inherit_from_mother) != bool:
-            raise Exception("inherit_from_father and inherit_from_mother must be booleans.")
-        if self.parameters.num_introduced > 0 and not (self.parameters.inherit_from_mother or self.parameters.inherit_from_father):
-            raise Exception("Inheritance must be turned on for at least one parent if num_introduced is nonzero.")
-        if self.parameters.inherit_chance < 0 or self.parameters.inherit_chance > 1:
-            raise Exception("inherit_chance must be between 0 and 1 inclusive.")
-        if self.parameters.mate_chance_average < 0:
-            raise Exception("mate_chance_average must be zero or greater.")
-        if self.parameters.mate_chance_stdev < 0:
-            raise Exception("mate_chance_stdev must be zero or greater.")
-        if self.parameters.male_reproduction_penalty < 0 or self.parameters.female_reproduction_penalty < 0:
-            raise Exception("Both reproduction penalties must be zero or greater.")
-        if self.parameters.max_lifespan <= 1 or type(self.parameters.max_lifespan) is not int:
-            raise Exception("max_lifespan must be an integer greater than 1")
-        if self.parameters.max_litter_size <= 0 or type(self.parameters.max_litter_size) is not int:
-            raise Exception("max_litter_size must be a positive integer.")
-        if type(self.parameters.stochastic_death) != bool:
-            raise Exception("stochastic_death must be a boolean.")
-        if self.parameters.avg_age_of_death < 0:
-            raise Exception("mate_chance_average must be zero or greater.")
-        if self.parameters.stdev_age_of_death < 0:
-            raise Exception("mate_chance_stdev must be zero or greater.")
-
     def create_generation_A(self):
-        for i in range(self.parameters.pop_size):
+        for i in range(self.parameters.initial_pop_size):
             identifier = str(self.current_generation)+"_"+str(i+1)
             if self.parameters.num_introduced > 0:
                 if self.parameters.inherit_from_mother and self.parameters.inherit_from_father:
@@ -153,9 +159,13 @@ class Population():
             pairs.append([moms[i], dads[i]])
         for i in pairs:
             for j in range(self.parameters.max_litter_size):
-                if random() <= self.members[i[0]].mate_chance*self.members[i[1]].mate_chance: #if True, pair mates
-                    offspring_identifier = str(self.current_generation)+"_"+str(len(self.members) + 1)
-                    #TODO: FIX ABOVE LINE
+                if self.parameters.population_cap != False:
+                    population_uncapped = len(self.members) < self.parameters.population_cap and gauss(.95*self.parameters.population_cap, 0.0167*len(self.members)) > len(self.members)
+                else:
+                    population_uncapped = True
+                if random() <= self.members[i[0]].mate_chance*self.members[i[1]].mate_chance and population_uncapped: #if True, pair mates
+                    self.cumulative_number_of_individuals += 1
+                    offspring_identifier = str(self.current_generation)+"_"+str(self.cumulative_number_of_individuals)
                     avg_mate_chance = (self.members[i[0]].mate_chance + self.members[i[1]].mate_chance) / 2
                     mother_pass_chance = self.members[i[0]].pass_gene_chance
                     father_pass_chance = self.members[i[1]].pass_gene_chance
@@ -246,6 +256,10 @@ def main():
     for i in range(parameters.generations):
         population.mate()
         print(len(population.members), population.get_carrier_percentage())
+        if len(population.members)==0:
+            print("Population gone at generation "+str(population.current_generation)+", "+str(population.cumulative_number_of_individuals)+" total individuals.")
+            break
+
 
 
 

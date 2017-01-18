@@ -83,9 +83,9 @@ class Population():
         self.male_number = 0
         self.female_number = 0
         self.current_generation = 0
-        self.create_generation_A()
+        self.create_generation_0()
 
-    def create_generation_A(self):
+    def create_generation_0(self):
         for i in range(self.parameters.initial_pop_size):
             identifier = str(self.current_generation)+"_"+str(i+1)
             assigned_mate_chance = gauss(self.parameters.initial_mate_chance_average, self.parameters.mate_chance_stdev)
